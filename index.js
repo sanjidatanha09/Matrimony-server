@@ -31,6 +31,7 @@ async function run() {
 
         const dataCollection = client.db('MatrimonyDB').collection('data');
         const reviewCollection = client.db('MatrimonyDB').collection('reviews');
+        const detailsCollection = client.db('MatrimonyDB').collection('details');
 
 
         //data related api
@@ -41,11 +42,35 @@ async function run() {
             res.send(result);
         })
 
+        app.post('/postdatas', async (req, res) => {
+            const newdata = req.body;
+            console.log(newdata);
+            const result = await dataCollection.insertOne(newdata);
+            res.send(result);
+        })
+
         //review related 
 
         app.get('/clientreview', async (req, res) => {
 
             const result = await reviewCollection.find().toArray();
+            res.send(result);
+        })
+
+        //details related
+        
+        app.get('/profiledetails', async (req, res) => {
+            const email = req.query.email;
+            const query = {email : email};
+            const result = await detailsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post('/profiledetails', async (req, res) => {
+
+            const profiledetails = req.body;
+
+            const result = await detailsCollection.insertOne(profiledetails);
             res.send(result);
         })
 
