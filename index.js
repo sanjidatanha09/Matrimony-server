@@ -34,9 +34,10 @@ async function run() {
         const dataCollection = client.db('MatrimonyDB').collection('data');
         const reviewCollection = client.db('MatrimonyDB').collection('reviews');
         const favouriteCollection = client.db('MatrimonyDB').collection('favourite');
-        const paymentCollection = client.db('MatrimonyDB').collection('payment');
+        
         const userCollection = client.db('MatrimonyDB').collection('users');
         const premiumCollection = client.db('MatrimonyDB').collection('Premium');
+        const paymentCollection = client.db('MatrimonyDB').collection('payments');
 
         //payment related
         app.post('/postpayment', async (req, res) => {
@@ -52,7 +53,7 @@ async function run() {
             res.send(result);
         })
 
-        //jswt related api
+        // jswt related api
         app.post('/jwt',async(req,res)=>{
             const user = req.body;
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{expiresIn:'1h'});
@@ -76,7 +77,7 @@ async function run() {
             if(req.headers.authorization){
                 return res.status(401).send({message: 'forbidden access'});
             }
-            const token = req.headers.authorization.split(' ')[1];
+            const token = req.headers.authorization;
             jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(err,decoded) =>{
                 if(err){
                     return res.status(401).send({message: 'forbidden access'})
@@ -94,7 +95,7 @@ async function run() {
 
         //users related api
 
-        app.get('/user',async(req,res) =>{
+        app.get('/user',async (req,res) =>{
             
             const result = await userCollection.find().toArray();
             res.send(result);
@@ -207,23 +208,20 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/checkout/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await dataCollection.findOne(query);
+            res.send(result);
+        });
+
         app.get('/datasemail', async (req, res) => {
             const email = req.query.email;
             const query = { email: email };
             const result = await dataCollection.find(query).toArray();
             res.send(result);
         })
-        // app.get('/generate-numbers/:count',async (req, res) => {
-        //     const count = parseInt(req.params.count);
-        //     const numbers = Array.from({ length: count }, (_, index) => index + 1);
-
-
-            
-        //     const result = await dataCollection.find(numbers).toArray();
-        //     res.send(result);
-        // });
-
-        //approved request premium
+        
 
         app.patch('/patchpremium/premium/:id', async (req, res) => {
             const id = req.params.id;
@@ -280,6 +278,13 @@ async function run() {
             const result = await favouriteCollection.find().toArray();
             res.send(result);
         })
+
+        app.get('/favget/:email', async (req, res) => {
+            const query = { email: req.params.email }
+            const result = await favouriteCollection.find(query).toArray();
+            res.send(result);
+
+        })
         
         app.get('/profiledetails', async (req, res) => {
             const email = req.query.email;
@@ -294,12 +299,15 @@ async function run() {
             const result = await favouriteCollection.insertOne(profiledetails);
             res.send(result);
         })
+
+
         //payment intent
 
-        app.post('create-payment-intent',async(req,res) =>{
-            const {price} = req.body;
-            const amount = parseInt(price *100);
+        app.post('/create-payment-intent',async(req,res) =>{
+            const {addfee} = req.body;
+            const amount = parseInt(addfee * 100);
             console.log(amount,'amoount inside')
+        
 
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
@@ -311,17 +319,69 @@ async function run() {
             })
         })
 
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const paymentResult = await paymentCollection.insertOne(payment);
+
+            console.log('payment info',payment);
+            
+
+            res.send(paymentResult)
+        })
+        app.get('/getpayments/:email', async (req, res) => {
+            const query = {email: req.params.email}
+            const result = await paymentCollection.find(query).toArray();
+            res.send(result);
+
+        })
+        app.get('/getpayments', async (req, res) => {
+           
+            const result = await paymentCollection.find().toArray();
+            res.send(result);
+
+        })
+
+        app.patch('/patchcontact/request/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+
+            const updateDoc3 = {
+                $set: {
+
+                    action: 'approve'
+                }
+            }
+            const result = await paymentCollection.updateOne(filter, updateDoc3)
+            res.send(result);
+
+
+        })
+
+
+
         //admin stat
         app.get('/admin-stat', async (req, res) => {
-            const users = await userCollection.estimatedDocumentCount();
-            const premium = await userCollection.estimatedDocumentCount();
+            const biodata = await dataCollection.estimatedDocumentCount();
+            // const premium = await userCollection.estimatedDocumentCount();
             // const users = await userCollection.estimatedDocumentCount();
 
-            const payments = await paymentCollection.find().toArray();
-            const revenue = payments.reduce((total, payment) =>total + payment.price,0)
+            // const payments = await paymentCollection.find().toArray();
+            // const revenue = payments.reduce((total, payment) =>total + payment.addfee,0)
+
+            const result = await paymentCollection.aggregate([
+                {
+                    $group:{
+                        _id:null,
+                        totalRevenue:{
+                            $sum:'$addfee'
+                        }
+                    }
+                }
+            ]).toArray();
+            const revenue = result.length >0 ? result[0].totalRevenue : 0;
 
             res.send({
-                users,
+                biodata,
                 revenue
             })
         })

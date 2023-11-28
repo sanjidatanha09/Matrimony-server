@@ -1,14 +1,19 @@
 const express = require('express');
 const applyMiddleWare = require('./Middleware/ApplyMiddleware');
+const connectDB = require('./db/connecDB');
 const app = express();
 require('dotenv').config()
 const port = process.env.PORT || 5000;
-
+const authentication = require("./Routes/Authentication/index")
 
 applyMiddleWare(app)
 
-app.get('/health', (req, res) => {
-    res.send('Assignment 12 is running')
+//jswt related api
+app.use(authentication);
+
+
+app.get('/', (req, res) => {
+    res.send('Assignment 12 is running mongoose')
 })
 
 app.all("*",(req,res,next) =>{
@@ -25,6 +30,11 @@ app.use((err,req,res,next) =>{
     })
 })
 
-app.listen(port, () => {
-    console.log(`Assignment-12 server is running on port: ${port}`);
-})
+const main=async () =>{
+    await connectDB();
+    app.listen(port, () => {
+        console.log(`Assignment-12 server is running on port mongoose: ${port}`);
+    })
+
+};
+main();
