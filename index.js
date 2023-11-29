@@ -362,29 +362,143 @@ async function run() {
         //admin stat
         app.get('/admin-stat', async (req, res) => {
             const biodata = await dataCollection.estimatedDocumentCount();
-            // const premium = await userCollection.estimatedDocumentCount();
-            // const users = await userCollection.estimatedDocumentCount();
+            const reviewcount = await reviewCollection.estimatedDocumentCount();
 
-            // const payments = await paymentCollection.find().toArray();
-            // const revenue = payments.reduce((total, payment) =>total + payment.addfee,0)
+            //malebio aggregate
+
+            const malebiodata = await dataCollection.aggregate([
+                {
+                    $unwind: '$Biodata_type'
+                },
+
+                {
+                    $group: {
+                        _id: '$Biodata_type',
+                        quantity: { $sum: 1 }
+                    }
+                },
+                {
+                    $match: {
+                        _id: 'Male'
+                    }
+                }
+
+            ]).toArray();;
+
+            const malebio = malebiodata.length > 0 ? malebiodata[0].quantity : 0;
+
+            //femalebio aggregate
+
+
+            const femalebiodata = await dataCollection.aggregate([
+                {
+                    $unwind: '$Biodata_type'
+                },
+
+                {
+                    $group: {
+                        _id: '$Biodata_type',
+                        quantity: { $sum: 1 }
+                    }
+                },
+                {
+                    $match: {
+                        _id: 'Female'
+                    }
+                }
+
+            ]).toArray();;
+
+            const femalebio = femalebiodata.length > 0 ? femalebiodata[0].quantity : 0;
+
+            //premium aggregate
+
+            const premiumbiodata = await dataCollection.aggregate([
+                {
+                    $unwind: '$Biodata_type'
+                },
+
+                {
+                    $group: {
+                        _id: '$action',
+                        quantity: { $sum: 1 }
+                    }
+                },
+               
+
+            ]).toArray();;
+
+            const premiumbio = premiumbiodata.length > 0 ? premiumbiodata[0].quantity : 0;
+
+            
+            
 
             const result = await paymentCollection.aggregate([
                 {
                     $group:{
-                        _id:null,
-                        totalRevenue:{
-                            $sum:'$addfee'
+                        _id: '$addfee',
+                        quantity:{
+                            $sum:1
                         }
                     }
                 }
             ]).toArray();
-            const revenue = result.length >0 ? result[0].totalRevenue : 0;
+            const Revenue = result.length > 0 ? result[0].quantity : 0;
+
+
+            //for male bio
+           
+           
 
             res.send({
                 biodata,
-                revenue
+                malebio,
+                femalebio,
+                premiumbio,
+                Revenue,
+                reviewcount
+
+              
             })
         })
+
+        app.get('/biodata-stat', async (req, res) => {
+
+            const result = await dataCollection.aggregate([
+                {
+                    $unwind:'$Biodata_type'
+                },
+
+                {
+                    $group: {
+                        _id: '$Biodata_type',
+                        quantity:{$sum:1}
+                    }
+                },
+                {
+                    $match:{
+                        _id:'Female'
+                    }
+                }
+               
+            ]).toArray();
+            res.send(result)
+
+
+            //for male bio
+
+
+
+            
+        })
+
+        
+
+
+
+
+        //using aggregate pipeline
+        
 
 
 
