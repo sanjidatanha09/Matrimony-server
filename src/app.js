@@ -6,10 +6,20 @@ require('dotenv').config()
 const port = process.env.PORT || 5000;
 const authentication = require("./Routes/Authentication/index")
 
+
+const servicesRoutes = require('./Routes/Services')
 applyMiddleWare(app)
 
-//jswt related api
+//jwt related api
 app.use(authentication);
+//service or data called
+app.use(servicesRoutes)
+
+
+
+
+
+
 
 
 app.get('/', (req, res) => {
